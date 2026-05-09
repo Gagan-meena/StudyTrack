@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/studytrack/static/css/main.305fc15d.css",
+    "main.js": "/studytrack/static/js/main.6d1c3ce3.js",
+    "index.html": "/studytrack/index.html",
+    "main.305fc15d.css.map": "/studytrack/static/css/main.305fc15d.css.map",
+    "main.6d1c3ce3.js.map": "/studytrack/static/js/main.6d1c3ce3.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.305fc15d.css",
+    "static/js/main.6d1c3ce3.js"
+  ]
+}
