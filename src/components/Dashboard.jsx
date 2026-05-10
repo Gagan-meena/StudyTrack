@@ -29,35 +29,84 @@ function Heatmap({ sessions }) {
     const now = new Date();
     for (let w = 52; w >= 0; w--) {
       const col = [];
-      for (let d = 6; d >= 0; d--) {
+      for (let d = 0; d < 7; d++) {
         const dt = new Date(now);
-        dt.setDate(dt.getDate() - (w * 7 + d));
+        dt.setDate(dt.getDate() - (w * 7 + (6 - d)));
         const k = dateKey(dt);
         const dur = sessions.filter((s) => s.date === k).reduce((a, s) => a + s.duration, 0);
         const hrs = dur / 3600;
-        col.push({ key: k, level: hrs === 0 ? 0 : hrs < 1 ? 1 : hrs < 2 ? 2 : hrs < 4 ? 3 : 4 });
+        col.push({ key: k, level: hrs === 0 ? 0 : hrs < 1 ? 1 : hrs < 2 ? 2 : hrs < 4 ? 3 : 4, day: dt.getDay(), date: dt });
       }
       data.push(col);
     }
     return data;
   }, [sessions]);
 
+  // Build month labels
+  const monthLabels = useMemo(() => {
+    const labels = [];
+    let lastMonth = -1;
+    cells.forEach((col, wi) => {
+      const month = col[0].date.getMonth();
+      if (month !== lastMonth) {
+        labels.push({ wi, label: col[0].date.toLocaleString('default', { month: 'short' }) });
+        lastMonth = month;
+      }
+    });
+    return labels;
+  }, [cells]);
+
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const CELL = 13; // cell size + gap
+
   return (
     <div className="card">
-      <div className="flex-between" style={{ marginBottom: 8 }}>
+      <div className="flex-between" style={{ marginBottom: 12 }}>
         <h2 style={{ marginBottom: 0 }}>Activity heatmap</h2>
         <span className="text-sm">Last 53 weeks</span>
       </div>
-      <div className="heatmap">
-        {cells.map((col, ci) => (
-          <div key={ci} className="hm-col">
-            {col.map((cell, ri) => (
-              <div key={ri} className="hm-cell" data-l={cell.level} title={cell.key} />
+
+      <div style={{ display: 'flex', gap: 4 }}>
+        {/* Day labels on left */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 20 }}>
+          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+            <div key={i} style={{ height: 11, fontSize: 9, color: '#555', lineHeight: '11px', width: 24, textAlign: 'right', paddingRight: 4 }}>
+              {label}
+            </div>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{ flex: 1, overflowX: 'auto' }}>
+          {/* Month labels */}
+          <div style={{ display: 'flex', marginBottom: 4, position: 'relative', height: 16 }}>
+            {monthLabels.map(({ wi, label }) => (
+              <div key={wi} style={{ position: 'absolute', left: wi * CELL, fontSize: 10, color: '#666' }}>
+                {label}
+              </div>
             ))}
           </div>
-        ))}
+
+          {/* Grid */}
+          <div style={{ display: 'flex', gap: 2 }}>
+            {cells.map((col, ci) => (
+              <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {col.map((cell, ri) => (
+                  <div
+                    key={ri}
+                    className="hm-cell"
+                    data-l={cell.level}
+                    title={`${cell.key}: ${cell.level === 0 ? 'No study' : ''}`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
         <span className="text-sm">Less</span>
         {[0, 1, 2, 3, 4].map((l) => <div key={l} className="hm-cell" data-l={l} />)}
         <span className="text-sm">More</span>
@@ -89,8 +138,8 @@ export default function Dashboard() {
 
   const subTotals = subjects.map((sub) => ({
     ...sub,
-    total: sessions.filter((s) => s.subjectId === sub.id).reduce((a, s) => a + s.duration, 0),
-    todayTime: todaySessions.filter((s) => s.subjectId === sub.id).reduce((a, s) => a + s.duration, 0),
+    total: sessions.filter((s) => Number(s.subjectId) === Number(sub.id)).reduce((a, s) => a + s.duration, 0),
+    todayTime: todaySessions.filter((s) => Number(s.subjectId) === Number(sub.id)).reduce((a, s) => a + s.duration, 0),
   })).sort((a, b) => b.todayTime - a.todayTime);
 
   const saveGoal = () => {

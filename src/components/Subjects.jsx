@@ -62,7 +62,7 @@ export default function Subjects() {
           {subjects.length === 0
             ? <div className="card empty-state">No subjects yet. Add one to get started.</div>
             : subjects.map((sub) => {
-              const tot = sessions.filter((s) => s.subjectId === sub.id).reduce((a, s) => a + s.duration, 0);
+              const tot = sessions.filter((s) => Number(s.subjectId) === Number(sub.id)).reduce((a, s) => a + s.duration, 0);
               const prog = sub.topics?.length
                 ? Math.round(sub.topics.filter((t) => t.done).length / sub.topics.length * 100)
                 : 0;

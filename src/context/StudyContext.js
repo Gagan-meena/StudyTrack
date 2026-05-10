@@ -28,11 +28,12 @@ export function StudyProvider({ children }) {
   }, [setLogs]);
 
   const logSession = useCallback((subjectId, duration) => {
+    const numId = Number(subjectId);
     setSessions((s) => [
       ...s,
       { id: Date.now(), subjectId, duration, date: today(), ts: Date.now() },
     ]);
-    const sub = subjects.find((s) => s.id === subjectId);
+    const sub = subjects.find((s) => s.id === numId);
     if (sub) addLog(`Studied ${sub.name} for ${Math.floor(duration / 60)}m`, sub.color);
   }, [subjects, setSessions, addLog]);
 

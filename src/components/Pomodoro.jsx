@@ -21,26 +21,27 @@ export default function Pomodoro() {
 
   const r = 58, cx = 70, cy = 70;
   const circ = 2 * Math.PI * r;
-
-  useEffect(() => {
-    if (pomState.running) {
-      intervalRef.current = setInterval(() => {
-        setPomState((p) => {
-          if (!p.running) return p;
-          const ne = p.elapsed + 1;
-          if (ne >= modeTime[p.mode]) {
+useEffect(() => {
+  if (pomState.running) {
+    intervalRef.current = setInterval(() => {
+      setPomState((p) => {
+        if (!p.running) return p;
+        const ne = p.elapsed + 1;
+        if (ne >= modeTime[p.mode]) {
+          setTimeout(() => {
             if (p.mode === 'focus' && p.subjectId) logSession(p.subjectId, modeTime.focus);
-            const nc = p.mode === 'focus' ? p.cycles + 1 : p.cycles;
-            const nm = p.mode === 'focus' ? (nc % 4 === 0 ? 'long' : 'short') : 'focus';
             addLog(`Pomodoro ${p.mode} complete`, '#6c63ff');
-            return { ...p, elapsed: 0, running: false, mode: nm, cycles: nc };
-          }
-          return { ...p, elapsed: ne };
-        });
-      }, 1000);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [pomState.running, pomState.mode, settings]);
+          }, 0);
+          const nc = p.mode === 'focus' ? p.cycles + 1 : p.cycles;
+          const nm = p.mode === 'focus' ? (nc % 4 === 0 ? 'long' : 'short') : 'focus';
+          return { ...p, elapsed: 0, running: false, mode: nm, cycles: nc };
+        }
+        return { ...p, elapsed: ne };
+      });
+    }, 1000);
+  }
+  return () => clearInterval(intervalRef.current);
+}, [pomState.running, pomState.mode, settings]);
 
   const modeLabel = { focus: 'Focus', short: 'Short break', long: 'Long break' };
 
@@ -99,7 +100,7 @@ export default function Pomodoro() {
             <label className="form-label">Studying subject</label>
             <select
               value={pomState.subjectId || ''}
-              onChange={(e) => setPomState((p) => ({ ...p, subjectId: e.target.value || null }))}
+              onChange={(e) => setPomState((p) => ({ ...p, subjectId: e.target.value ? Number(e.target.value) : null }))}
             >
               <option value="">— Select subject —</option>
               {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
