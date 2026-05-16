@@ -3,7 +3,7 @@ import { useStudy } from '../context/StudyContext';
 import { today } from '../utils';
 
 export default function Log() {
-  const { logs, setLogs, sessions, setSessions, subjects, setSubjects, tasks, setTasks } = useStudy();
+  const { logs, setLogs, sessions, setSessions, subjects, setSubjects, tasks, setTasks, goals, setGoals } = useStudy();
 
   const grouped = {};
   logs.forEach((l) => {
@@ -49,21 +49,28 @@ export default function Log() {
         date: l.date || today(),
       }));
     }
+    if (data.goals && typeof data.goals === 'object') {
+      data.goals = { daily: data.goals.daily || 7200, subjects: data.goals.subjects || {} };
+    }
     return data;
   };
 
   const exportData = () => {
+    const readLS = (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
     const data = {
       subjects,
       sessions,
       logs,
       tasks,
+      goals,
+      pomSettings: readLS('st_pom_settings'),
       exported: new Date().toISOString(),
+      version: 2,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `studytrack-${today()}.json`;
+    a.download = `studytrack-backup-${today()}.json`;
     a.click();
   };
 
@@ -79,7 +86,9 @@ export default function Log() {
         if (data.sessions) setSessions(data.sessions);
         if (data.logs) setLogs(data.logs);
         if (data.tasks) setTasks(data.tasks);
-        alert('✅ Data imported successfully!');
+        if (data.goals) setGoals(data.goals);
+        if (data.pomSettings) localStorage.setItem('st_pom_settings', JSON.stringify(data.pomSettings));
+        alert('✅ Data imported successfully! Refresh the page to apply all settings.');
       } catch {
         alert('❌ Invalid file. Please use a StudyTrack export file.');
       }

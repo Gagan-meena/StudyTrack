@@ -41,7 +41,7 @@ useEffect(() => {
         }
         return { ...p, elapsed: ne, startedAt: now };
       });
-    }, 10);
+    }, 1000);
   }
   return () => clearInterval(intervalRef.current);
 }, [pomState.running, pomState.mode, settings]);
