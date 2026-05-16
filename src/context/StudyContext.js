@@ -11,7 +11,7 @@ export function StudyProvider({ children }) {
   const [logs, setLogs] = useLocalStorage('st_logs', []);
   const [goals, setGoals] = useLocalStorage('st_goals', { daily: 7200, subjects: {} });
   const [pomState, setPomState] = useLocalStorage('st_pom', {
-    subjectId: null, elapsed: 0, running: false, mode: 'focus', cycles: 0
+    subjectId: null, elapsed: 0, running: false, mode: 'focus', cycles: 0, startedAt: null
   });
 
   const addLog = useCallback((text, color) => {

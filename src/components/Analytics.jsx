@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Chart } from 'chart.js/auto';
 import { useStudy } from '../context/StudyContext';
-import { fmtHM, getWeekDays } from '../utils';
+import { fmtHM, getWeekDays, today } from '../utils';
 
 function WeeklyBarChart({ sessions, subjects, weekOffset }) {
   const canvasRef = useRef(null);
@@ -61,7 +61,7 @@ function SubjectWeekChart({ subject, sessions, weekOffset }) {
     if (chartRef.current) chartRef.current.destroy();
 
     const data = weekData.map((d) =>
-      parseFloat((sessions.filter((s) => s.subjectId === subject.id && s.date === d.key)
+      parseFloat((sessions.filter((s) => Number(s.subjectId) === Number(subject.id) && s.date === d.key)
         .reduce((a, s) => a + s.duration, 0) / 3600).toFixed(2))
     );
 
@@ -117,7 +117,7 @@ export default function Analytics() {
   const getWeekTotal = (subId) => {
     const days = getWeekDays(weekOffset);
     return days.reduce((total, d) =>
-      total + sessions.filter((s) => (!subId || s.subjectId === subId) && s.date === d.key)
+      total + sessions.filter((s) => (!subId || Number(s.subjectId) === Number(subId)) && s.date === d.key)
         .reduce((a, s) => a + s.duration, 0), 0
     );
   };
@@ -173,7 +173,7 @@ export default function Analytics() {
           <div className="grid-4">
             {subjects.map((s) => {
               const wt = getWeekTotal(s.id);
-              const all = sessions.filter((x) => x.subjectId === s.id).reduce((a, x) => a + x.duration, 0);
+              const all = sessions.filter((x) => Number(x.subjectId) === Number(s.id)).reduce((a, x) => a + x.duration, 0);
               return (
                 <div key={s.id} className="stat-card">
                   <div className="flex-center gap-8 mb-12">
@@ -198,7 +198,7 @@ export default function Analytics() {
               <div className="grid-2">
                 {subjects.map((s) => {
                   const wt = getWeekTotal(s.id);
-                  const all = sessions.filter((x) => x.subjectId === s.id).reduce((a, x) => a + x.duration, 0);
+                  const all = sessions.filter((x) => Number(x.subjectId) === Number(s.id)).reduce((a, x) => a + x.duration, 0);
                   const prog = s.topics?.length ? Math.round(s.topics.filter((t) => t.done).length / s.topics.length * 100) : 0;
                   const subGoal = goals.subjects?.[s.id];
                   return (
@@ -218,11 +218,11 @@ export default function Analytics() {
                         <div style={{ marginTop: 10 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666', marginBottom: 4 }}>
                             <span>Daily goal</span>
-                            <span>{fmtHM(sessions.filter((x) => x.subjectId === s.id && x.date === today()).reduce((a, x) => a + x.duration, 0))} / {fmtHM(subGoal)}</span>
+                            <span>{fmtHM(sessions.filter((x) => Number(x.subjectId) === Number(s.id) && x.date === today()).reduce((a, x) => a + x.duration, 0))} / {fmtHM(subGoal)}</span>
                           </div>
                           <div className="progress-bar">
                             <div className="progress-fill" style={{
-                              width: `${Math.min(100, Math.round(sessions.filter((x) => x.subjectId === s.id && x.date === today()).reduce((a, x) => a + x.duration, 0) / subGoal * 100))}%`,
+                              width: `${Math.min(100, Math.round(sessions.filter((x) => Number(x.subjectId) === Number(s.id) && x.date === today()).reduce((a, x) => a + x.duration, 0) / subGoal * 100))}%`,
                               background: s.color
                             }} />
                           </div>

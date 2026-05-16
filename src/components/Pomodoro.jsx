@@ -26,7 +26,10 @@ useEffect(() => {
     intervalRef.current = setInterval(() => {
       setPomState((p) => {
         if (!p.running) return p;
-        const ne = p.elapsed + 1;
+        const now = Date.now();
+        // Use real elapsed time since last tick so background tab throttling doesn't lose time
+        const delta = p.startedAt ? Math.max(1, Math.floor((now - p.startedAt) / 1000)) : 1;
+        const ne = p.elapsed + delta;
         if (ne >= modeTime[p.mode]) {
           setTimeout(() => {
             if (p.mode === 'focus' && p.subjectId) logSession(p.subjectId, modeTime.focus);
@@ -34,11 +37,11 @@ useEffect(() => {
           }, 0);
           const nc = p.mode === 'focus' ? p.cycles + 1 : p.cycles;
           const nm = p.mode === 'focus' ? (nc % 4 === 0 ? 'long' : 'short') : 'focus';
-          return { ...p, elapsed: 0, running: false, mode: nm, cycles: nc };
+          return { ...p, elapsed: 0, running: false, mode: nm, cycles: nc, startedAt: null };
         }
-        return { ...p, elapsed: ne };
+        return { ...p, elapsed: ne, startedAt: now };
       });
-    }, 1000);
+    }, 10);
   }
   return () => clearInterval(intervalRef.current);
 }, [pomState.running, pomState.mode, settings]);
@@ -56,7 +59,7 @@ useEffect(() => {
               <button
                 key={m}
                 className={`btn btn-sm${pomState.mode === m ? ' btn-primary' : ''}`}
-                onClick={() => setPomState((p) => ({ ...p, mode: m, elapsed: 0, running: false }))}
+                onClick={() => setPomState((p) => ({ ...p, mode: m, elapsed: 0, running: false, startedAt: null }))}
               >
                 {modeLabel[m]}
               </button>
@@ -85,10 +88,16 @@ useEffect(() => {
 
           {/* Controls */}
           <div className="flex-center gap-8 mb-16" style={{ justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => setPomState((p) => ({ ...p, running: !p.running }))}>
+            <button className="btn btn-primary" onClick={() => setPomState((p) => {
+              if (p.running) {
+                const ne = p.elapsed + (p.startedAt ? Math.floor((Date.now() - p.startedAt) / 1000) : 0);
+                return { ...p, running: false, elapsed: Math.min(ne, modeTime[p.mode] - 1), startedAt: null };
+              }
+              return { ...p, running: true, startedAt: Date.now() };
+            })}>
               {pomState.running ? '⏸ Pause' : '▶ Start'}
             </button>
-            <button className="btn" onClick={() => setPomState((p) => ({ ...p, elapsed: 0, running: false }))}>
+            <button className="btn" onClick={() => setPomState((p) => ({ ...p, elapsed: 0, running: false, startedAt: null }))}>
               ⏹ Reset
             </button>
           </div>
