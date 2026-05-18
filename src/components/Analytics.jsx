@@ -32,7 +32,7 @@ function WeeklyBarChart({ sessions, subjects, weekOffset }) {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}h` } },
+          tooltip: { callbacks: { label: (c) => { const m = Math.round(c.raw * 60); return `${c.dataset.label}: ${m >= 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m}m`}`; } } },
         },
         scales: {
           x: { stacked: true, ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#1e1e1e' } },
@@ -81,7 +81,7 @@ function SubjectWeekChart({ subject, sessions, weekOffset }) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => { const m = Math.round(c.raw * 60); return `${m >= 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m}m`}`; } } } },
         scales: {
           x: { ticks: { color: '#666', font: { size: 10 } }, grid: { display: false } },
           y: { ticks: { color: '#666', font: { size: 10 }, callback: (v) => `${v}h` }, grid: { color: '#1e1e1e' }, beginAtZero: true },

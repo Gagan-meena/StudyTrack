@@ -13,6 +13,7 @@ export function StudyProvider({ children }) {
   const [pomState, setPomState] = useLocalStorage('st_pom', {
     subjectId: null, elapsed: 0, running: false, mode: 'focus', cycles: 0, startedAt: null
   });
+  const [subjectTimers, setSubjectTimers] = useLocalStorage('st_subject_timers', {});
 
   const addLog = useCallback((text, color) => {
     setLogs((l) => [
@@ -45,6 +46,7 @@ export function StudyProvider({ children }) {
       logs, setLogs,
       goals, setGoals,
       pomState, setPomState,
+      subjectTimers, setSubjectTimers,
       addLog, logSession,
     }}>
       {children}
