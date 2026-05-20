@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useStudy } from '../context/StudyContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
@@ -6,6 +6,9 @@ export default function Pomodoro() {
   const { subjects, pomState, setPomState, logSession, addLog, subjectTimers, setSubjectTimers } = useStudy();
   const [settings, setSettings] = useLocalStorage('st_pom_settings', { focus: 25, short: 5, long: 15 });
   const intervalRef = useRef(null);
+  const [notifPerm, setNotifPerm] = useState(() =>
+    'Notification' in window ? Notification.permission : 'denied'
+  );
 
   const modeTime = {
     focus: settings.focus * 60,
@@ -22,22 +25,40 @@ export default function Pomodoro() {
   const r = 58, cx = 70, cy = 70;
   const circ = 2 * Math.PI * r;
 
-  // Request notification permission once on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+  const requestNotifPermission = useCallback(async () => {
+    if (!('Notification' in window)) return;
+    const result = await Notification.requestPermission();
+    setNotifPerm(result);
+  }, []);
+
+  const playBeep = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.35, 0.7].forEach((delay) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.3);
+      });
+    } catch (_) {}
   }, []);
 
   const notify = useCallback((mode, subjectName) => {
+    playBeep();
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const msgs = {
-      focus: `✅ Focus session complete${subjectName ? ` — ${subjectName}` : ''}! Time for a break.`,
+      focus: `✅ Focus complete${subjectName ? ` — ${subjectName}` : ''}! Time for a break.`,
       short: '⏰ Short break over! Ready to focus?',
       long: '⏰ Long break over! Back to work.',
     };
     new Notification('StudyTrack', { body: msgs[mode] || 'Timer complete!' });
-  }, []);
+  }, [playBeep]);
 
   useEffect(() => {
     if (pomState.running) {
@@ -206,6 +227,23 @@ export default function Pomodoro() {
         {/* Settings */}
         <div className="card">
           <h2>Timer settings</h2>
+          <div className="form-group" style={{ marginBottom: 16 }}>
+            <label className="form-label">Alerts</label>
+            {notifPerm === 'granted' ? (
+              <div style={{ fontSize: 12, color: '#4ade80' }}>🔔 Browser notifications enabled</div>
+            ) : notifPerm === 'denied' ? (
+              <div style={{ fontSize: 12, color: '#f87171' }}>
+                🔕 Notifications blocked — allow them in browser site settings, then reload.
+              </div>
+            ) : (
+              <button className="btn btn-sm btn-primary" onClick={requestNotifPermission}>
+                🔔 Enable browser notifications
+              </button>
+            )}
+            <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>
+              Audio beep always plays when timer ends (even in another tab).
+            </div>
+          </div>
           {[
             ['focus', 'Focus (min)', 1, 120],
             ['short', 'Short break (min)', 1, 30],
