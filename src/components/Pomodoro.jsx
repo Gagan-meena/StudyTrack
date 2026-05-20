@@ -155,6 +155,22 @@ export default function Pomodoro() {
             <button className="btn" onClick={() => setPomState((p) => ({ ...p, elapsed: 0, running: false, startedAt: null }))}>
               ⏹ Reset
             </button>
+            {pomState.mode === 'focus' && pomState.subjectId && pomState.elapsed > 0 && (
+              <button className="btn" style={{ background: '#1a3a1a', color: '#4ade80', border: '1px solid #4ade80' }}
+                onClick={() => {
+                  const now = Date.now();
+                  const actualElapsed = pomState.elapsed + (pomState.startedAt ? Math.floor((now - pomState.startedAt) / 1000) : 0);
+                  if (actualElapsed > 0) {
+                    logSession(pomState.subjectId, actualElapsed);
+                    addLog(`Finished early — ${Math.floor(actualElapsed / 60)}m logged`, '#4ade80');
+                  }
+                  // Reset this subject's saved timer and the active state
+                  setSubjectTimers((st) => { const n = { ...st }; delete n[pomState.subjectId]; return n; });
+                  setPomState((p) => ({ ...p, elapsed: 0, running: false, startedAt: null }));
+                }}>
+                ✓ Finish
+              </button>
+            )}
           </div>
 
           <div style={{ fontSize: 12, color: '#666', marginBottom: 14 }}>Cycles completed: {pomState.cycles}</div>
