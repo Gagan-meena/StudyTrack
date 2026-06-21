@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StudyProvider } from '../context/StudyContext';
 import Tasks from '../components/Tasks';
@@ -109,6 +109,110 @@ describe('Tasks', () => {
       ],
     });
     expect(screen.getByText(/Completed \(2\)/i)).toBeInTheDocument();
+  });
+});
+
+describe('Tasks — Edit task text', () => {
+  test('clicking ✎ button shows input with current task text', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    expect(screen.getByDisplayValue('Read chapter')).toBeInTheDocument();
+  });
+
+  test('saves edited task on Enter', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Read chapter');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Read chapter 5{Enter}');
+    expect(screen.getByText('Read chapter 5')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Read chapter 5')).not.toBeInTheDocument(); // input closed
+  });
+
+  test('saves edited task on blur', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Read chapter');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Updated task');
+    fireEvent.blur(input);
+    expect(screen.getByText('Updated task')).toBeInTheDocument();
+  });
+
+  test('Escape cancels edit — original text stays', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Read chapter');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Wrong text');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByDisplayValue('Wrong text')).not.toBeInTheDocument();
+    expect(screen.getByText('Read chapter')).toBeInTheDocument();
+  });
+
+  test('does not save empty edit — original text preserved in storage', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Read chapter');
+    await userEvent.clear(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    // Edit mode stays open — task text span is hidden (replaced by the empty input)
+    expect(screen.queryByText('Read chapter')).not.toBeInTheDocument();
+    // localStorage was not overwritten
+    const stored = JSON.parse(localStorage.getItem('st_tasks') || '[]');
+    expect(stored[0]?.text).toBe('Read chapter');
+  });
+
+  test('edited task persists to localStorage', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Read chapter', done: false, priority: 'medium', created: today() }],
+    });
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Read chapter');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Chapter 5 reading{Enter}');
+    const stored = JSON.parse(localStorage.getItem('st_tasks'));
+    expect(stored[0].text).toBe('Chapter 5 reading');
+  });
+
+  test('editing one task does not affect other tasks', async () => {
+    wrap(<Tasks />, {
+      st_tasks: [
+        { id: 1, text: 'Task A', done: false, priority: 'high', created: today() },
+        { id: 2, text: 'Task B', done: false, priority: 'low',  created: today() },
+      ],
+    });
+    const editBtns = screen.getAllByText('✎');
+    await userEvent.click(editBtns[0]);
+    const input = screen.getByDisplayValue('Task A');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Task A Renamed{Enter}');
+    expect(screen.getByText('Task A Renamed')).toBeInTheDocument();
+    expect(screen.getByText('Task B')).toBeInTheDocument(); // second task unchanged
+  });
+
+  test('editing a task does not create a new log entry', async () => {
+    const { unmount } = wrap(<Tasks />, {
+      st_tasks: [{ id: 1, text: 'Write report', done: false, priority: 'medium', created: today() }],
+    });
+    const logsBefore = JSON.parse(localStorage.getItem('st_logs') || '[]').length;
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Write report');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Write report draft{Enter}');
+    const logsAfter = JSON.parse(localStorage.getItem('st_logs') || '[]').length;
+    expect(logsAfter).toBe(logsBefore); // no log entry created for edits
+    unmount();
   });
 });
 

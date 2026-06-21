@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StudyProvider } from '../context/StudyContext';
 import Subjects from '../components/Subjects';
@@ -181,5 +181,160 @@ describe('Subjects', () => {
     await userEvent.type(screen.getByPlaceholderText('Add a topic...'), 'Integrals{Enter}');
     const stored = JSON.parse(localStorage.getItem('st_subjects'));
     expect(stored[0].topics[0].text).toBe('Integrals');
+  });
+});
+
+describe('Subjects — Edit subject name', () => {
+  test('clicking edit button shows input with current name', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    expect(screen.getByDisplayValue('Math')).toBeInTheDocument();
+  });
+
+  test('saves renamed subject on Enter', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Algebra{Enter}');
+    expect(screen.getByText('Algebra')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Algebra')).not.toBeInTheDocument(); // input closed
+  });
+
+  test('saves renamed subject on blur', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Algebra');
+    fireEvent.blur(input);
+    expect(screen.getByText('Algebra')).toBeInTheDocument();
+  });
+
+  test('Escape cancels rename — original name stays', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Wrong name');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByDisplayValue('Wrong name')).not.toBeInTheDocument();
+    expect(screen.getByText('Math')).toBeInTheDocument();
+  });
+
+  test('empty rename does not update subject name', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByDisplayValue('')).toBeInTheDocument(); // input stays open
+  });
+
+  test('renamed subject persists to localStorage', async () => {
+    renderSubjects({ st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [] }] });
+    await userEvent.click(screen.getByText('edit'));
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Calculus{Enter}');
+    const stored = JSON.parse(localStorage.getItem('st_subjects'));
+    expect(stored[0].name).toBe('Calculus');
+  });
+
+  test('editing one subject does not affect another subject', async () => {
+    renderSubjects({
+      st_subjects: [
+        { id: 1, name: 'Math', color: '#6c63ff', topics: [] },
+        { id: 2, name: 'Physics', color: '#f87171', topics: [] },
+      ],
+    });
+    const editBtns = screen.getAllByText('edit');
+    await userEvent.click(editBtns[0]);
+    const input = screen.getByDisplayValue('Math');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Pure Math{Enter}');
+    expect(screen.getByText('Pure Math')).toBeInTheDocument();
+    expect(screen.getByText('Physics')).toBeInTheDocument(); // second subject unchanged
+  });
+});
+
+describe('Subjects — Edit topic name', () => {
+  test('clicking ✎ button shows input with current topic text', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [{ id: 10, text: 'Calculus', done: false }] }],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    await userEvent.click(screen.getByText('✎'));
+    expect(screen.getByDisplayValue('Calculus')).toBeInTheDocument();
+  });
+
+  test('saves renamed topic on Enter', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [{ id: 10, text: 'Calculus', done: false }] }],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Calculus');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Integral Calculus{Enter}');
+    expect(screen.getByText('Integral Calculus')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Integral Calculus')).not.toBeInTheDocument();
+  });
+
+  test('saves renamed topic on blur', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [{ id: 10, text: 'Calculus', done: false }] }],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Calculus');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Differential Calculus');
+    fireEvent.blur(input);
+    expect(screen.getByText('Differential Calculus')).toBeInTheDocument();
+  });
+
+  test('Escape cancels topic rename — original text stays', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [{ id: 10, text: 'Calculus', done: false }] }],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Calculus');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Wrong');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByDisplayValue('Wrong')).not.toBeInTheDocument();
+    expect(screen.getByText('Calculus')).toBeInTheDocument();
+  });
+
+  test('renamed topic persists to localStorage', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [{ id: 10, text: 'Calculus', done: false }] }],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    await userEvent.click(screen.getByText('✎'));
+    const input = screen.getByDisplayValue('Calculus');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Limits{Enter}');
+    const stored = JSON.parse(localStorage.getItem('st_subjects'));
+    expect(stored[0].topics[0].text).toBe('Limits');
+  });
+
+  test('editing one topic does not affect another topic', async () => {
+    renderSubjects({
+      st_subjects: [{ id: 1, name: 'Math', color: '#6c63ff', topics: [
+        { id: 10, text: 'Topic A', done: false },
+        { id: 11, text: 'Topic B', done: false },
+      ]}],
+    });
+    await userEvent.click(screen.getByText('Math'));
+    const editBtns = screen.getAllByText('✎');
+    await userEvent.click(editBtns[0]);
+    const input = screen.getByDisplayValue('Topic A');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Topic A Renamed{Enter}');
+    expect(screen.getByText('Topic A Renamed')).toBeInTheDocument();
+    expect(screen.getByText('Topic B')).toBeInTheDocument(); // second topic unchanged
   });
 });

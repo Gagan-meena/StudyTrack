@@ -5,6 +5,12 @@ import { StudyProvider } from '../context/StudyContext';
 import Dashboard from '../components/Dashboard';
 import { today } from '../utils';
 
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function renderDashboard(preloadedStorage = {}) {
   Object.entries(preloadedStorage).forEach(([k, v]) => {
     localStorage.setItem(k, JSON.stringify(v));
@@ -141,5 +147,98 @@ describe('Dashboard', () => {
       st_logs: [{ id: 1, text: 'Studied Math for 30m', color: '#6c63ff', time: '10:00', date: today() }],
     });
     expect(screen.getByText('Studied Math for 30m')).toBeInTheDocument();
+  });
+});
+
+describe('Dashboard — This week stat', () => {
+  test('shows "This week" label, not "All time"', () => {
+    renderDashboard();
+    expect(screen.getByText('This week')).toBeInTheDocument();
+    expect(screen.queryByText('All time')).not.toBeInTheDocument();
+  });
+
+  test('weekly total sums sessions within the last 7 days', () => {
+    renderDashboard({
+      st_sessions: [
+        { id: 1, subjectId: 1, duration: 3600, date: today() },       // 1h — today
+        { id: 2, subjectId: 1, duration: 1800, date: daysAgo(3) },    // 30m — 3 days ago
+        { id: 3, subjectId: 1, duration: 900,  date: daysAgo(6) },    // 15m — 6 days ago (boundary, included)
+      ],
+    });
+    const weekCard = screen.getByText('This week').closest('.stat-card');
+    expect(within(weekCard).getByText('1h 45m')).toBeInTheDocument();
+  });
+
+  test('excludes sessions older than 6 days from weekly total', () => {
+    renderDashboard({
+      st_sessions: [
+        { id: 1, subjectId: 1, duration: 3600, date: today() },       // 1h — included
+        { id: 2, subjectId: 1, duration: 7200, date: daysAgo(7) },    // 2h — 7 days ago, excluded
+        { id: 3, subjectId: 1, duration: 3600, date: '2020-01-01' },  // old, excluded
+      ],
+    });
+    const weekCard = screen.getByText('This week').closest('.stat-card');
+    expect(within(weekCard).getByText('1h 0m')).toBeInTheDocument();
+  });
+
+  test('Today card and This week card count independently', () => {
+    renderDashboard({
+      st_sessions: [
+        { id: 1, subjectId: 1, duration: 1800, date: today() },       // 30m today
+        { id: 2, subjectId: 1, duration: 3600, date: daysAgo(3) },    // 1h 3 days ago (not today)
+      ],
+    });
+    const todayCard = screen.getByText('Today').closest('.stat-card');
+    const weekCard  = screen.getByText('This week').closest('.stat-card');
+    expect(within(todayCard).getByText('30m')).toBeInTheDocument();
+    expect(within(weekCard).getByText('1h 30m')).toBeInTheDocument();
+  });
+
+  test('weekly total is 0m with no sessions', () => {
+    renderDashboard();
+    const weekCard = screen.getByText('This week').closest('.stat-card');
+    expect(within(weekCard).getByText('0m')).toBeInTheDocument();
+  });
+});
+
+describe('Dashboard — Streak fix (yesterday keeps streak alive)', () => {
+  test('shows streak from yesterday when no session yet today', () => {
+    renderDashboard({
+      st_sessions: [
+        { id: 1, subjectId: 1, duration: 3600, date: daysAgo(1) },
+        { id: 2, subjectId: 1, duration: 3600, date: daysAgo(2) },
+      ],
+    });
+    expect(screen.getByText('2d 🔥')).toBeInTheDocument();
+  });
+
+  test('single session yesterday gives streak of 1', () => {
+    renderDashboard({
+      st_sessions: [{ id: 1, subjectId: 1, duration: 3600, date: daysAgo(1) }],
+    });
+    expect(screen.getByText('1d 🔥')).toBeInTheDocument();
+  });
+
+  test('streak is 0 when last session was 2+ days ago', () => {
+    renderDashboard({
+      st_sessions: [{ id: 1, subjectId: 1, duration: 3600, date: daysAgo(2) }],
+    });
+    expect(screen.getByText('0d 🔥')).toBeInTheDocument();
+  });
+
+  test('streak spans today + yesterday when both have sessions', () => {
+    renderDashboard({
+      st_sessions: [
+        { id: 1, subjectId: 1, duration: 3600, date: today() },
+        { id: 2, subjectId: 1, duration: 3600, date: daysAgo(1) },
+        { id: 3, subjectId: 1, duration: 3600, date: daysAgo(2) },
+      ],
+    });
+    expect(screen.getByText('3d 🔥')).toBeInTheDocument();
+  });
+
+  test('streak is 0 with no sessions at all', () => {
+    renderDashboard();
+    expect(screen.getByText('0d 🔥')).toBeInTheDocument();
   });
 });
