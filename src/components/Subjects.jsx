@@ -8,6 +8,10 @@ export default function Subjects() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', color: COLORS[0] });
   const [topicInput, setTopicInput] = useState('');
+  const [editSubId, setEditSubId] = useState(null);
+  const [editSubName, setEditSubName] = useState('');
+  const [editTopicId, setEditTopicId] = useState(null);
+  const [editTopicText, setEditTopicText] = useState('');
 
   const addSubject = () => {
     if (!form.name.trim()) return;
@@ -44,6 +48,22 @@ export default function Subjects() {
     setSel((p) => p ? { ...p, topics: p.topics.filter((t) => t.id !== topId) } : p);
   };
 
+  const renameSubject = (id, name) => {
+    if (!name.trim()) return;
+    setSubjects((s) => s.map((x) => x.id === id ? { ...x, name: name.trim() } : x));
+    setEditSubId(null);
+  };
+
+  const renameTopic = (subId, topId, text) => {
+    if (!text.trim()) return;
+    setSubjects((s) => s.map((x) => x.id === subId
+      ? { ...x, topics: x.topics.map((t) => t.id === topId ? { ...t, text: text.trim() } : t) }
+      : x
+    ));
+    setSel((p) => p ? { ...p, topics: p.topics.map((t) => t.id === topId ? { ...t, text: text.trim() } : t) } : p);
+    setEditTopicId(null);
+  };
+
   const selFull = sel ? subjects.find((s) => s.id === sel.id) : null;
   const subTotal = selFull
     ? sessions.filter((s) => s.subjectId === selFull.id).reduce((a, s) => a + s.duration, 0)
@@ -74,11 +94,25 @@ export default function Subjects() {
                   onClick={() => setSel(sub)}
                 >
                   <div className="flex-between mb-12">
-                    <div className="flex-center gap-8">
+                    <div className="flex-center gap-8" style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ width: 12, height: 12, borderRadius: '50%', background: sub.color, flexShrink: 0 }} />
-                      <span style={{ fontWeight: 500, color: '#e8e8e8', fontSize: 14 }}>{sub.name}</span>
+                      {editSubId === sub.id ? (
+                        <input
+                          type="text" value={editSubName} autoFocus
+                          style={{ flex: 1, fontSize: 13, padding: '2px 6px' }}
+                          onChange={(e) => setEditSubName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') renameSubject(sub.id, editSubName); if (e.key === 'Escape') setEditSubId(null); }}
+                          onBlur={() => renameSubject(sub.id, editSubName)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 500, color: '#e8e8e8', fontSize: 14 }}>{sub.name}</span>
+                      )}
                     </div>
-                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); delSubject(sub.id); }}>del</button>
+                    <div className="flex-center gap-8">
+                      <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); setEditSubId(sub.id); setEditSubName(sub.name); }}>edit</button>
+                      <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); delSubject(sub.id); }}>del</button>
+                    </div>
                   </div>
                   <div className="flex-between" style={{ marginBottom: 6 }}>
                     <span className="text-sm">{(sub.topics || []).length} topics · {fmtHM(tot) || '0m'}</span>
@@ -124,10 +158,21 @@ export default function Subjects() {
                     onChange={() => toggleTopic(selFull.id, t.id)}
                     style={{ width: 15, height: 15, accentColor: '#6c63ff', cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <span style={{ flex: 1, fontSize: 13, color: t.done ? '#555' : '#ccc', textDecoration: t.done ? 'line-through' : 'none' }}>
-                    {t.text}
-                  </span>
-                  {t.done && <span style={{ fontSize: 10, color: '#555' }}>{t.date || ''}</span>}
+                  {editTopicId === t.id ? (
+                    <input
+                      type="text" value={editTopicText} autoFocus
+                      style={{ flex: 1, fontSize: 13, padding: '2px 6px' }}
+                      onChange={(e) => setEditTopicText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') renameTopic(selFull.id, t.id, editTopicText); if (e.key === 'Escape') setEditTopicId(null); }}
+                      onBlur={() => renameTopic(selFull.id, t.id, editTopicText)}
+                    />
+                  ) : (
+                    <span style={{ flex: 1, fontSize: 13, color: t.done ? '#555' : '#ccc', textDecoration: t.done ? 'line-through' : 'none' }}>
+                      {t.text}
+                    </span>
+                  )}
+                  {t.done && !editTopicId && <span style={{ fontSize: 10, color: '#555' }}>{t.date || ''}</span>}
+                  <button className="btn btn-sm" style={{ padding: '2px 6px' }} onClick={() => { setEditTopicId(t.id); setEditTopicText(t.text); }}>✎</button>
                   <button className="btn btn-danger btn-sm" style={{ padding: '2px 6px' }} onClick={() => delTopic(selFull.id, t.id)}>×</button>
                 </div>
               ))

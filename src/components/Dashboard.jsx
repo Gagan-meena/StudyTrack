@@ -122,12 +122,17 @@ export default function Dashboard() {
 
   const todaySessions = sessions.filter((s) => s.date === today());
   const totalToday = todaySessions.reduce((a, s) => a + s.duration, 0);
-  const totalAll = sessions.reduce((a, s) => a + s.duration, 0);
+
+  const d6ago = new Date(); d6ago.setDate(d6ago.getDate() - 6);
+  const weekStartKey = dateKey(d6ago);
+  const totalWeek = sessions.filter((s) => s.date >= weekStartKey).reduce((a, s) => a + s.duration, 0);
 
   const streak = useMemo(() => {
     const days = new Set(sessions.map((s) => s.date));
     let count = 0;
     const d = new Date();
+    // If no session today yet, start from yesterday so streak stays alive until midnight
+    if (!days.has(dateKey(d))) d.setDate(d.getDate() - 1);
     while (true) {
       const k = dateKey(d);
       if (days.has(k)) { count++; d.setDate(d.getDate() - 1); }
@@ -166,7 +171,7 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="grid-4">
         <div className="stat-card"><div className="stat-label">Today</div><div className="stat-val">{fmtHM(totalToday) || '0m'}</div></div>
-        <div className="stat-card"><div className="stat-label">All time</div><div className="stat-val">{fmtHM(totalAll) || '0m'}</div></div>
+        <div className="stat-card"><div className="stat-label">This week</div><div className="stat-val">{fmtHM(totalWeek) || '0m'}</div></div>
         <div className="stat-card"><div className="stat-label">Streak</div><div className="stat-val">{streak}d 🔥</div></div>
         <div className="stat-card"><div className="stat-label">Subjects</div><div className="stat-val">{subjects.length}</div></div>
       </div>

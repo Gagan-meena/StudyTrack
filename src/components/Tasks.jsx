@@ -8,6 +8,8 @@ export default function Tasks() {
   const { tasks, setTasks, addLog } = useStudy();
   const [input, setInput] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState('');
 
   const add = () => {
     if (!input.trim()) return;
@@ -19,6 +21,11 @@ export default function Tasks() {
 
   const toggle = (id) => setTasks((ts) => ts.map((t) => t.id === id ? { ...t, done: !t.done } : t));
   const del = (id) => setTasks((ts) => ts.filter((t) => t.id !== id));
+  const saveEdit = (id) => {
+    if (!editText.trim()) return;
+    setTasks((ts) => ts.map((t) => t.id === id ? { ...t, text: editText.trim() } : t));
+    setEditId(null);
+  };
 
   const pending = tasks.filter((t) => !t.done);
   const done = tasks.filter((t) => t.done);
@@ -56,8 +63,19 @@ export default function Tasks() {
               style={{ width: 15, height: 15, accentColor: '#6c63ff', cursor: 'pointer', flexShrink: 0 }}
             />
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: PRIORITY_COLORS[t.priority], flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{t.text}</span>
+            {editId === t.id ? (
+              <input
+                type="text" value={editText} autoFocus
+                style={{ flex: 1, fontSize: 13, padding: '2px 6px' }}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(t.id); if (e.key === 'Escape') setEditId(null); }}
+                onBlur={() => saveEdit(t.id)}
+              />
+            ) : (
+              <span style={{ flex: 1, fontSize: 13, color: '#ccc' }}>{t.text}</span>
+            )}
             <span style={{ fontSize: 11, color: '#555' }}>{t.created}</span>
+            <button className="btn btn-sm" style={{ padding: '2px 6px' }} onClick={() => { setEditId(t.id); setEditText(t.text); }}>✎</button>
             <button className="btn btn-danger btn-sm" style={{ padding: '2px 6px' }} onClick={() => del(t.id)}>×</button>
           </div>
         ))}
